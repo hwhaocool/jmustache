@@ -174,7 +174,7 @@ public class Template {
         for (Segment seg : _segs) {
             if (skip) {
                 if (seg instanceof StringSegment) {
-                    String strSeg = seg.toString();
+                    String strSeg = seg.toString().replaceAll(" ", "");
                     if (strSeg.startsWith("Text(\\r\\n)")) {
                         skip = false;
                         continue;
