@@ -7,6 +7,7 @@ package com.samskivert.mustache;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -916,8 +917,39 @@ public class Mustache {
             _segs = trim(segs, false);
         }
         protected void executeSegs (Template tmpl, Template.Context ctx, Writer out) {
+            boolean skip = false;
+            
             for (Template.Segment seg : _segs) {
+                if (skip) {
+                    if (seg instanceof StringSegment) {
+                        String strSeg = seg.toString().replaceAll(" ", "");
+                        if (strSeg.startsWith("Text(\\r\\n)")) {
+                            skip = false;
+                            continue;
+                        }
+                    }
+                    skip = false;
+                }
+                
+                boolean isSectionSegment = false;
+                if (seg instanceof SectionSegment) {
+                    isSectionSegment = true;
+                }
+                
+                int beforeLength = 0;
+                if (isSectionSegment) {
+                    beforeLength = ((StringWriter)out).getBuffer().length();
+                }
+                
                 seg.execute(tmpl, ctx, out);
+                
+                if (isSectionSegment) {
+                    int afterLength = ((StringWriter)out).getBuffer().length();
+                    if (beforeLength == afterLength) {
+                        // SectionSegment ouput empty, so this line should not write, skip the next StringSegment which is \r\n
+                        skip = true;
+                    }
+                }
             }
         }
 

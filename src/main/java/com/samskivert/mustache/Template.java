@@ -11,6 +11,9 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
+import com.samskivert.mustache.Mustache.SectionSegment;
+import com.samskivert.mustache.Mustache.StringSegment;
+
 /**
  * Represents a compiled template. Templates are executed with a <em>context</em> to generate
  * output. The context can be any tree of objects. Variables are resolved against the context.
@@ -166,8 +169,39 @@ public class Template {
     }
 
     protected void executeSegs (Context ctx, Writer out) throws MustacheException {
+        boolean skip = false;
+        
         for (Segment seg : _segs) {
+            if (skip) {
+                if (seg instanceof StringSegment) {
+                    String strSeg = seg.toString();
+                    if (strSeg.startsWith("Text(\\r\\n)")) {
+                        skip = false;
+                        continue;
+                    }
+                }
+                skip = false;
+            }
+            
+            boolean isSectionSegment = false;
+            if (seg instanceof SectionSegment) {
+                isSectionSegment = true;
+            }
+            
+            int beforeLength = 0;
+            if (isSectionSegment) {
+                beforeLength = ((StringWriter)out).getBuffer().length();
+            }
+            
             seg.execute(this, ctx, out);
+            
+            if (isSectionSegment) {
+                int afterLength = ((StringWriter)out).getBuffer().length();
+                if (beforeLength == afterLength) {
+                    // SectionSegment ouput empty, so this line should not write, skip the next StringSegment which is \r\n
+                    skip = true;
+                }
+            }
         }
     }
 
